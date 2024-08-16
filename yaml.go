@@ -38,10 +38,21 @@ func Marshal(o interface{}) ([]byte, error) {
 // JSONOpt is a decoding option for decoding from JSON format.
 type JSONOpt func(*json.Decoder) *json.Decoder
 
+// YAMLOpt is a decoding option for decoding from YAML format.
+type YAMLOpt func(*yaml.Decoder) *yaml.Decoder
+
 // Unmarshal converts YAML to JSON then uses JSON to unmarshal into an object,
 // optionally configuring the behavior of the JSON unmarshal.
 func Unmarshal(y []byte, o interface{}, opts ...JSONOpt) error {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
+	return unmarshal(dec, o, opts)
+}
+
+// UnmarshalWithLocation is like Unmarshal but it also adds location information
+// to the output.
+func UnmarshalWithLocation(y []byte, o interface{}, opts ...JSONOpt) error {
+	dec := yaml.NewDecoder(bytes.NewReader(y))
+	dec.Location(true)
 	return unmarshal(dec, o, opts)
 }
 
