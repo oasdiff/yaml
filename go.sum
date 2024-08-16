@@ -1,2 +1,4 @@
+github.com/oasdiff/yaml3 v0.0.0-20240816154714-050c8afd23bb h1:0hIUy/Ay52Tbr/NNnn81OIAoi5u4U0TiRiEdTrT6Zg8=
+github.com/oasdiff/yaml3 v0.0.0-20240816154714-050c8afd23bb/go.mod h1:lqlOfJRrYpgeWHQj+ky2tf7UJ3PzgHTHRQEpc90nbp0=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
