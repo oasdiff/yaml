@@ -16,7 +16,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"gopkg.in/yaml.v3"
+	yaml "github.com/oasdiff/yaml3"
 )
 
 // Marshal the object into JSON then converts JSON to YAML and returns the
@@ -52,7 +52,7 @@ func Unmarshal(y []byte, o interface{}, opts ...JSONOpt) error {
 // to the output.
 func UnmarshalWithLocation(y []byte, o interface{}, opts ...JSONOpt) error {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
-	dec.Location(true)
+	dec.Origin(true)
 	return unmarshal(dec, o, opts)
 }
 
