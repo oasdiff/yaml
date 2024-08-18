@@ -48,9 +48,9 @@ func Unmarshal(y []byte, o interface{}, opts ...JSONOpt) error {
 	return unmarshal(dec, o, opts)
 }
 
-// UnmarshalWithLocation is like Unmarshal but it also adds location information
+// UnmarshalWithOrigin is like Unmarshal but it also adds location information
 // to the output.
-func UnmarshalWithLocation(y []byte, o interface{}, opts ...JSONOpt) error {
+func UnmarshalWithOrigin(y []byte, o interface{}, opts ...JSONOpt) error {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
 	dec.Origin(true)
 	return unmarshal(dec, o, opts)
