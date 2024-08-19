@@ -16,7 +16,7 @@ import (
 	"reflect"
 	"strconv"
 
-	yaml "github.com/oasdiff/yaml3"
+	"gopkg.in/yaml.v3"
 )
 
 // Marshal the object into JSON then converts JSON to YAML and returns the
