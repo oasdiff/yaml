@@ -44,15 +44,14 @@ type YAMLOpt func(*yaml.Decoder) *yaml.Decoder
 // Unmarshal converts YAML to JSON then uses JSON to unmarshal into an object,
 // optionally configuring the behavior of the JSON unmarshal.
 func Unmarshal(y []byte, o interface{}, opts ...JSONOpt) error {
-	dec := yaml.NewDecoder(bytes.NewReader(y))
-	return unmarshal(dec, o, opts)
+	return UnmarshalWithOrigin(y, o, false, opts...)
 }
 
-// UnmarshalWithOrigin is like Unmarshal but it also adds location information
-// to the output.
-func UnmarshalWithOrigin(y []byte, o interface{}, opts ...JSONOpt) error {
+// UnmarshalWithOrigin is like Unmarshal but if withOrigin is true, it will
+// include the origin information in the output.
+func UnmarshalWithOrigin(y []byte, o interface{}, withOrigin bool, opts ...JSONOpt) error {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
-	dec.Origin(true)
+	dec.Origin(withOrigin)
 	return unmarshal(dec, o, opts)
 }
 
