@@ -65,7 +65,12 @@ func UnmarshalWithOrigin(y []byte, o interface{}, origin OriginOpt, opts ...JSON
 // It mirrors the structure of the spec: Fields tracks map children by key,
 // Items tracks slice children by index.
 type OriginTree struct {
-	// Origin is the raw __origin__ value (map[string]any) for this node.
+	// File is the source file for all origins in this subtree.
+	// Set once at the root of each decode call; all nodes in the same
+	// decode share the same file.
+	File string
+	// Origin is the raw __origin__ value ([]any compact sequence) for this node.
+	// Format: [key_name, key_line, key_col, nf, f1_name, f1_delta, f1_col, ..., ns, ...]
 	Origin any
 	// Fields holds child trees keyed by map key name.
 	Fields map[string]*OriginTree
@@ -92,7 +97,7 @@ func UnmarshalWithOriginTree(y []byte, o interface{}, origin OriginOpt, opts ...
 	// Extract __origin__ before JSON conversion so the JSON stays small.
 	var tree *OriginTree
 	if origin.Enabled {
-		tree = extractOrigins(yamlObj)
+		tree = extractOrigins(yamlObj, origin.File)
 	}
 
 	// Convert to JSON (without __origin__) and unmarshal into the target struct.
@@ -116,20 +121,28 @@ const originKey = "__origin__"
 
 // extractOrigins recursively extracts and removes __origin__ entries from a
 // YAML-decoded map tree, returning the origin data as an OriginTree.
-func extractOrigins(v any) *OriginTree {
+// file is the source file for all nodes in this decode call.
+func extractOrigins(v any, file string) *OriginTree {
 	switch val := v.(type) {
 	case map[string]any:
-		tree := &OriginTree{}
+		return extractOriginsFromStringMap(val, file)
+	case map[interface{}]interface{}:
+		// yaml3 produces map[interface{}]interface{} when map keys are non-string
+		// (e.g. integer HTTP status codes like 200). __origin__ is always a string
+		// key, so we must handle this case to strip it from mixed-key maps.
+		tree := &OriginTree{File: file}
 		if orig, ok := val[originKey]; ok {
 			tree.Origin = orig
 			delete(val, originKey)
 		}
 		for k, child := range val {
-			if childTree := extractOrigins(child); childTree != nil {
+			if childTree := extractOrigins(child, file); childTree != nil {
 				if tree.Fields == nil {
 					tree.Fields = make(map[string]*OriginTree)
 				}
-				tree.Fields[k] = childTree
+				if ks, ok := k.(string); ok {
+					tree.Fields[ks] = childTree
+				}
 			}
 		}
 		if tree.Origin == nil && tree.Fields == nil {
@@ -140,7 +153,7 @@ func extractOrigins(v any) *OriginTree {
 		var items []*OriginTree
 		hasChild := false
 		for _, child := range val {
-			childTree := extractOrigins(child)
+			childTree := extractOrigins(child, file)
 			items = append(items, childTree) // may be nil; preserves index alignment
 			if childTree != nil {
 				hasChild = true
@@ -149,10 +162,30 @@ func extractOrigins(v any) *OriginTree {
 		if !hasChild {
 			return nil
 		}
-		return &OriginTree{Items: items}
+		return &OriginTree{File: file, Items: items}
 	default:
 		return nil
 	}
+}
+
+func extractOriginsFromStringMap(val map[string]any, file string) *OriginTree {
+	tree := &OriginTree{File: file}
+	if orig, ok := val[originKey]; ok {
+		tree.Origin = orig
+		delete(val, originKey)
+	}
+	for k, child := range val {
+		if childTree := extractOrigins(child, file); childTree != nil {
+			if tree.Fields == nil {
+				tree.Fields = make(map[string]*OriginTree)
+			}
+			tree.Fields[k] = childTree
+		}
+	}
+	if tree.Origin == nil && tree.Fields == nil {
+		return nil
+	}
+	return tree
 }
 
 func unmarshal(dec *yaml.Decoder, o interface{}, opts []JSONOpt) error {

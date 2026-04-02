@@ -416,7 +416,7 @@ func TestExtractOrigins_Map(t *testing.T) {
 		},
 	}
 
-	tree := extractOrigins(input)
+	tree := extractOrigins(input, "")
 	if tree == nil {
 		t.Fatal("expected non-nil tree")
 	}
@@ -463,7 +463,7 @@ func TestExtractOrigins_Slice(t *testing.T) {
 		},
 	}
 
-	tree := extractOrigins(input)
+	tree := extractOrigins(input, "")
 	if tree == nil {
 		t.Fatal("expected non-nil tree")
 	}
@@ -493,12 +493,12 @@ func TestExtractOrigins_Slice(t *testing.T) {
 }
 
 func TestExtractOrigins_Nil(t *testing.T) {
-	tree := extractOrigins("scalar")
+	tree := extractOrigins("scalar", "")
 	if tree != nil {
 		t.Error("expected nil tree for scalar")
 	}
 
-	tree = extractOrigins(map[string]any{"a": "b"})
+	tree = extractOrigins(map[string]any{"a": "b"}, "")
 	if tree != nil {
 		t.Error("expected nil tree for map without __origin__")
 	}
@@ -538,9 +538,16 @@ func TestUnmarshalWithOriginTree(t *testing.T) {
 	if infoTree.Origin == nil {
 		t.Fatal("expected info origin")
 	}
-	originMap := infoTree.Origin.(map[string]any)
-	if originMap["key"] == nil {
-		t.Error("expected key in info origin")
+	// New compact format: []any{key_name, key_line, key_col, nf, ...}
+	originSeq, ok := infoTree.Origin.([]any)
+	if !ok {
+		t.Fatalf("expected []any origin, got %T", infoTree.Origin)
+	}
+	if len(originSeq) < 4 {
+		t.Errorf("expected at least 4 elements in origin sequence, got %d", len(originSeq))
+	}
+	if originSeq[0] != "info" {
+		t.Errorf("expected key_name 'info', got %v", originSeq[0])
 	}
 }
 
