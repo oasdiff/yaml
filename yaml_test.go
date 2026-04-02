@@ -538,16 +538,19 @@ func TestUnmarshalWithOriginTree(t *testing.T) {
 	if infoTree.Origin == nil {
 		t.Fatal("expected info origin")
 	}
-	// New compact format: []any{key_name, key_line, key_col, nf, ...}
+	// Compact format: []any{file, key_name, key_line, key_col, nf, ...}
 	originSeq, ok := infoTree.Origin.([]any)
 	if !ok {
 		t.Fatalf("expected []any origin, got %T", infoTree.Origin)
 	}
-	if len(originSeq) < 4 {
-		t.Errorf("expected at least 4 elements in origin sequence, got %d", len(originSeq))
+	if len(originSeq) < 5 {
+		t.Errorf("expected at least 5 elements in origin sequence, got %d", len(originSeq))
 	}
-	if originSeq[0] != "info" {
-		t.Errorf("expected key_name 'info', got %v", originSeq[0])
+	if originSeq[0] != "test.yaml" {
+		t.Errorf("expected file 'test.yaml' at index 0, got %v", originSeq[0])
+	}
+	if originSeq[1] != "info" {
+		t.Errorf("expected key_name 'info' at index 1, got %v", originSeq[1])
 	}
 }
 
