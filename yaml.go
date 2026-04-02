@@ -140,9 +140,22 @@ func extractOrigins(v any, file string) *OriginTree {
 				if tree.Fields == nil {
 					tree.Fields = make(map[string]*OriginTree)
 				}
-				if ks, ok := k.(string); ok {
-					tree.Fields[ks] = childTree
+				// Convert key to string: mirrors convertToJSONableObject behaviour.
+				// String keys pass through; int/int64/float64 keys are formatted.
+				var ks string
+				switch kt := k.(type) {
+				case string:
+					ks = kt
+				case int:
+					ks = strconv.Itoa(kt)
+				case int64:
+					ks = strconv.FormatInt(kt, 10)
+				case float64:
+					ks = strconv.FormatFloat(kt, 'g', -1, 64)
+				default:
+					ks = fmt.Sprintf("%v", k)
 				}
+				tree.Fields[ks] = childTree
 			}
 		}
 		if tree.Origin == nil && tree.Fields == nil {
