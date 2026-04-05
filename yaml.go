@@ -38,27 +38,19 @@ func Marshal(o interface{}) ([]byte, error) {
 // JSONOpt is a decoding option for decoding from JSON format.
 type JSONOpt func(*json.Decoder) *json.Decoder
 
-// YAMLOpt is a decoding option for decoding from YAML format.
-type YAMLOpt func(*yaml.Decoder) *yaml.Decoder
-
 // Unmarshal converts YAML to JSON then uses JSON to unmarshal into an object,
 // optionally configuring the behavior of the JSON unmarshal.
 func Unmarshal(y []byte, o interface{}, opts ...JSONOpt) error {
-	return UnmarshalWithOrigin(y, o, OriginOpt{}, opts...)
+	_, err := UnmarshalWithOriginTree(y, o, OriginOpt{}, opts...)
+	return err
 }
 
-// OriginOpt controls origin-tracking behavior in UnmarshalWithOrigin.
+// OriginOpt controls origin-tracking behavior in UnmarshalWithOriginTree.
 type OriginOpt struct {
 	// Enabled adds __origin__ metadata to maps during unmarshaling.
 	Enabled bool
 	// File is the source file name recorded in origin metadata.
 	File string
-}
-
-// UnmarshalWithOrigin is like Unmarshal but supports origin tracking via OriginOpt.
-func UnmarshalWithOrigin(y []byte, o interface{}, origin OriginOpt, opts ...JSONOpt) error {
-	_, err := UnmarshalWithOriginTree(y, o, origin, opts...)
-	return err
 }
 
 // OriginTree holds __origin__ data extracted from a YAML-decoded map tree.
@@ -199,21 +191,6 @@ func extractOriginsFromStringMap(val map[string]any, file string) *OriginTree {
 		return nil
 	}
 	return tree
-}
-
-func unmarshal(dec *yaml.Decoder, o interface{}, opts []JSONOpt) error {
-	vo := reflect.ValueOf(o)
-	j, err := yamlToJSON(dec, &vo)
-	if err != nil {
-		return fmt.Errorf("error converting YAML to JSON: %v", err)
-	}
-
-	err = jsonUnmarshal(bytes.NewReader(j), o, opts...)
-	if err != nil {
-		return fmt.Errorf("error unmarshaling JSON: %v", err)
-	}
-
-	return nil
 }
 
 // jsonUnmarshal unmarshals the JSON byte stream from the given reader into the
