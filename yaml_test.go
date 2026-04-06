@@ -525,9 +525,14 @@ func TestUnmarshalWithOriginTree(t *testing.T) {
 		t.Errorf("expected title Test, got %s", out.Info.Title)
 	}
 
-	// Origin tree returned (root mapping has no __origin__, but info does)
+	// Origin tree returned — root mapping now gets __origin__ too (yaml3 document() fix)
 	if tree == nil {
 		t.Fatal("expected non-nil origin tree")
+	}
+
+	// Root mapping must have origin set
+	if tree.Origin == nil {
+		t.Fatal("expected root origin to be set (yaml3 document() now injects __origin__ for root mappings)")
 	}
 
 	// Info subtree with origin
@@ -551,6 +556,47 @@ func TestUnmarshalWithOriginTree(t *testing.T) {
 	}
 	if originSeq[1] != "info" {
 		t.Errorf("expected key_name 'info' at index 1, got %v", originSeq[1])
+	}
+}
+
+// TestUnmarshalWithOriginTree_StandaloneSchema verifies that a YAML document
+// that IS itself a schema (no wrapping key — the $ref pattern) produces a
+// non-nil root Origin in the OriginTree. This exercises the yaml3 fix that
+// injects __origin__ for the root mapping in document().
+func TestUnmarshalWithOriginTree_StandaloneSchema(t *testing.T) {
+	// Simulates data/ref-chain-example/base/schemas/pet.yaml
+	yamlData := []byte("type: object\nrequired:\n  - id\n  - name\n")
+
+	var out map[string]any
+	tree, err := UnmarshalWithOriginTree(yamlData, &out, OriginOpt{Enabled: true, File: "pet.yaml"})
+	if err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if tree == nil {
+		t.Fatal("expected non-nil origin tree")
+	}
+	// Root schema Origin must now be set (yaml3 document() fix)
+	if tree.Origin == nil {
+		t.Fatal("expected root origin to be set for standalone schema ($ref-root fix)")
+	}
+	// Compact format: [file, key_name, key_line, key_col, nf, fields..., ns, seqs...]
+	originSeq, ok := tree.Origin.([]any)
+	if !ok {
+		t.Fatalf("expected []any origin, got %T", tree.Origin)
+	}
+	if len(originSeq) < 6 {
+		t.Errorf("expected at least 6 elements, got %d", len(originSeq))
+	}
+	if originSeq[0] != "pet.yaml" {
+		t.Errorf("expected file 'pet.yaml', got %v", originSeq[0])
+	}
+	// key_name must be empty string (synthetic root key has no name)
+	if originSeq[1] != "" {
+		t.Errorf("expected empty key_name for root, got %v", originSeq[1])
+	}
+	// 'required' sequence items must be in the tree for source tracking
+	if tree.Fields != nil {
+		t.Errorf("expected no sub-fields in a standalone scalar-only schema, but got: %v", tree.Fields)
 	}
 }
 
