@@ -41,7 +41,7 @@ type JSONOpt func(*json.Decoder) *json.Decoder
 // Unmarshal converts YAML to JSON then uses JSON to unmarshal into an object,
 // optionally configuring the behavior of the JSON unmarshal.
 func Unmarshal(y []byte, o interface{}, opts ...JSONOpt) error {
-	_, err := UnmarshalWithOriginTree(y, o, OriginOpt{}, opts...)
+	_, err := UnmarshalWithDecodeOpts(y, o, DecodeOpts{}, opts...)
 	return err
 }
 
@@ -51,6 +51,23 @@ type OriginOpt struct {
 	Enabled bool
 	// File is the source file name recorded in origin metadata.
 	File string
+}
+
+// DecodeOpts groups options that apply to the YAML decoder side, as opposed
+// to JSONOpt which configures the JSON unmarshal step. DecodeOpts can be
+// passed to UnmarshalWithDecodeOpts; the existing Unmarshal /
+// UnmarshalWithOriginTree entry points preserve their signatures and dispatch
+// through here internally.
+type DecodeOpts struct {
+	// Origin controls origin-tracking behavior. When Origin.Enabled is
+	// false the OriginTree returned by UnmarshalWithDecodeOpts is nil.
+	Origin OriginOpt
+	// DisableTimestamps suppresses YAML 1.1 implicit-timestamp resolution.
+	// When true, untagged date-shaped scalars (e.g. "1344-08-22") resolve
+	// to strings instead of time.Time, which keeps map keys stable for
+	// real-world specs that use date-shaped strings as keys. Explicit
+	// "!!timestamp" tags in the source still resolve to time.Time.
+	DisableTimestamps bool
 }
 
 // OriginTree holds __origin__ data extracted from a YAML-decoded map tree.
@@ -75,8 +92,20 @@ type OriginTree struct {
 // origin data as an OriginTree. The caller can apply the tree to Go structs
 // after unmarshaling. When origin tracking is disabled, the returned tree is nil.
 func UnmarshalWithOriginTree(y []byte, o interface{}, origin OriginOpt, opts ...JSONOpt) (*OriginTree, error) {
+	return UnmarshalWithDecodeOpts(y, o, DecodeOpts{Origin: origin}, opts...)
+}
+
+// UnmarshalWithDecodeOpts is the explicit-options form of Unmarshal /
+// UnmarshalWithOriginTree. It accepts a DecodeOpts (yaml-side options:
+// origin tracking, timestamp resolution) plus the variadic JSONOpt list
+// (json-side options applied after YAML→JSON conversion). Returns the
+// extracted OriginTree, which is nil when origin tracking is disabled.
+func UnmarshalWithDecodeOpts(y []byte, o interface{}, decode DecodeOpts, opts ...JSONOpt) (*OriginTree, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
-	dec.Origin(origin.Enabled, origin.File)
+	dec.Origin(decode.Origin.Enabled, decode.Origin.File)
+	if decode.DisableTimestamps {
+		dec.DisableTimestamps(true)
+	}
 
 	// Decode YAML into a generic object.
 	var yamlObj interface{}
@@ -88,8 +117,8 @@ func UnmarshalWithOriginTree(y []byte, o interface{}, origin OriginOpt, opts ...
 
 	// Extract __origin__ before JSON conversion so the JSON stays small.
 	var tree *OriginTree
-	if origin.Enabled {
-		tree = extractOrigins(yamlObj, origin.File)
+	if decode.Origin.Enabled {
+		tree = extractOrigins(yamlObj, decode.Origin.File)
 	}
 
 	// Convert to JSON (without __origin__) and unmarshal into the target struct.

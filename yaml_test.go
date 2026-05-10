@@ -615,3 +615,28 @@ func TestUnmarshalWithOriginTree_Disabled(t *testing.T) {
 		t.Errorf("expected title Test, got %s", out.Info.Title)
 	}
 }
+
+func TestDecodeOpts_DisableTimestamps(t *testing.T) {
+	y := []byte("1344-08-22: hello\n")
+
+	// Without DisableTimestamps, the date-shaped map key gets resolved to a
+	// time.Time, which the JSON-conversion step rejects as an unsupported map
+	// key type. The unmarshal fails rather than silently corrupting the data.
+	if err := Unmarshal(y, &map[string]string{}); err == nil {
+		t.Fatalf("expected default Unmarshal to fail on a date-shaped map key, got nil error")
+	}
+
+	// With DisableTimestamps=true, the same input parses cleanly: the key
+	// stays a string and round-trips through to the target map.
+	out := map[string]string{}
+	tree, err := UnmarshalWithDecodeOpts(y, &out, DecodeOpts{DisableTimestamps: true})
+	if err != nil {
+		t.Fatalf("UnmarshalWithDecodeOpts: %v", err)
+	}
+	if tree != nil {
+		t.Fatalf("expected nil OriginTree (Origin disabled), got %+v", tree)
+	}
+	if got := out["1344-08-22"]; got != "hello" {
+		t.Fatalf("expected map[\"1344-08-22\"]=\"hello\", got map=%v", out)
+	}
+}
