@@ -619,11 +619,20 @@ func TestUnmarshal_OriginTracking_Disabled(t *testing.T) {
 func TestDecodeOpts_DisableTimestamps(t *testing.T) {
 	y := []byte("1344-08-22: hello\n")
 
-	// Without DisableTimestamps, the date-shaped map key gets resolved to a
-	// time.Time, which the JSON-conversion step rejects as an unsupported map
-	// key type. The unmarshal fails rather than silently corrupting the data.
-	if _, err := Unmarshal(y, &map[string]string{}, DecodeOpts{}); err == nil {
+	// Without DisableTimestamps the underlying YAML decoder resolves the
+	// date-shaped map key to a time.Time, which the JSON-conversion step
+	// then rejects as an unsupported map key type. Both claims are pinned
+	// by asserting on the error message itself: it names the type
+	// (time.Time) and the rejection reason (unsupported map key).
+	_, err := Unmarshal(y, &map[string]string{}, DecodeOpts{})
+	if err == nil {
 		t.Fatalf("expected default Unmarshal to fail on a date-shaped map key, got nil error")
+	}
+	if !strings.Contains(err.Error(), "time.Time") {
+		t.Fatalf("expected error to mention time.Time (the resolved key type), got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "unsupported map key") {
+		t.Fatalf("expected error to mention unsupported map key (the JSON-conversion rejection), got: %v", err)
 	}
 
 	// With DisableTimestamps=true, the same input parses cleanly: the key
