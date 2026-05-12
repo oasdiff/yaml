@@ -171,7 +171,7 @@ func prettyFunctionName(opts []JSONOpt) []string {
 
 func unmarshalEqual(t *testing.T, y []byte, s, e interface{}, opts ...JSONOpt) { //nolint:unparam
 	t.Helper()
-	err := Unmarshal(y, s, opts...)
+	_, err := Unmarshal(y, s, DecodeOpts{}, opts...)
 	if err != nil {
 		t.Errorf("Unmarshal(%#q, s, %v) = %v", string(y), prettyFunctionName(opts), err)
 		return
@@ -205,7 +205,7 @@ func TestUnmarshalErrors(t *testing.T) {
 		},
 	} {
 		s := UnmarshalString{}
-		err := Unmarshal(tc.yaml, &s)
+		_, err := Unmarshal(tc.yaml, &s, DecodeOpts{})
 		if tc.wantErr != "" && err == nil {
 			t.Errorf("Unmarshal(%#q, &s) = nil; want error", string(tc.yaml))
 			continue
@@ -511,11 +511,11 @@ type OriginTreeTestStruct struct {
 	} `json:"info"`
 }
 
-func TestUnmarshalWithOriginTree(t *testing.T) {
+func TestUnmarshal_OriginTracking(t *testing.T) {
 	yamlData := []byte("info:\n  title: Test\n  version: v1\n")
 
 	var out OriginTreeTestStruct
-	tree, err := UnmarshalWithOriginTree(yamlData, &out, OriginOpt{Enabled: true, File: "test.yaml"})
+	tree, err := Unmarshal(yamlData, &out, DecodeOpts{Origin: OriginOpt{Enabled: true, File: "test.yaml"}})
 	if err != nil {
 		t.Fatalf("unmarshal error: %v", err)
 	}
@@ -559,16 +559,16 @@ func TestUnmarshalWithOriginTree(t *testing.T) {
 	}
 }
 
-// TestUnmarshalWithOriginTree_StandaloneSchema verifies that a YAML document
+// TestUnmarshal_OriginTracking_StandaloneSchema verifies that a YAML document
 // that IS itself a schema (no wrapping key — the $ref pattern) produces a
 // non-nil root Origin in the OriginTree. This exercises the yaml3 fix that
 // injects __origin__ for the root mapping in document().
-func TestUnmarshalWithOriginTree_StandaloneSchema(t *testing.T) {
+func TestUnmarshal_OriginTracking_StandaloneSchema(t *testing.T) {
 	// Simulates data/ref-chain-example/base/schemas/pet.yaml
 	yamlData := []byte("type: object\nrequired:\n  - id\n  - name\n")
 
 	var out map[string]any
-	tree, err := UnmarshalWithOriginTree(yamlData, &out, OriginOpt{Enabled: true, File: "pet.yaml"})
+	tree, err := Unmarshal(yamlData, &out, DecodeOpts{Origin: OriginOpt{Enabled: true, File: "pet.yaml"}})
 	if err != nil {
 		t.Fatalf("unmarshal error: %v", err)
 	}
@@ -600,11 +600,11 @@ func TestUnmarshalWithOriginTree_StandaloneSchema(t *testing.T) {
 	}
 }
 
-func TestUnmarshalWithOriginTree_Disabled(t *testing.T) {
+func TestUnmarshal_OriginTracking_Disabled(t *testing.T) {
 	yamlData := []byte("info:\n  title: Test\n")
 
 	var out OriginTreeTestStruct
-	tree, err := UnmarshalWithOriginTree(yamlData, &out, OriginOpt{Enabled: false})
+	tree, err := Unmarshal(yamlData, &out, DecodeOpts{Origin: OriginOpt{Enabled: false}})
 	if err != nil {
 		t.Fatalf("unmarshal error: %v", err)
 	}
@@ -622,16 +622,16 @@ func TestDecodeOpts_DisableTimestamps(t *testing.T) {
 	// Without DisableTimestamps, the date-shaped map key gets resolved to a
 	// time.Time, which the JSON-conversion step rejects as an unsupported map
 	// key type. The unmarshal fails rather than silently corrupting the data.
-	if err := Unmarshal(y, &map[string]string{}); err == nil {
+	if _, err := Unmarshal(y, &map[string]string{}, DecodeOpts{}); err == nil {
 		t.Fatalf("expected default Unmarshal to fail on a date-shaped map key, got nil error")
 	}
 
 	// With DisableTimestamps=true, the same input parses cleanly: the key
 	// stays a string and round-trips through to the target map.
 	out := map[string]string{}
-	tree, err := UnmarshalWithDecodeOpts(y, &out, DecodeOpts{DisableTimestamps: true})
+	tree, err := Unmarshal(y, &out, DecodeOpts{DisableTimestamps: true})
 	if err != nil {
-		t.Fatalf("UnmarshalWithDecodeOpts: %v", err)
+		t.Fatalf("Unmarshal: %v", err)
 	}
 	if tree != nil {
 		t.Fatalf("expected nil OriginTree (Origin disabled), got %+v", tree)
