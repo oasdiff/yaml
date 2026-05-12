@@ -87,10 +87,10 @@ type OriginTree struct {
 	Items []*OriginTree
 }
 
-// UnmarshalWithOriginTree is like UnmarshalWithOrigin but strips __origin__
-// from the intermediate map before JSON conversion and returns the extracted
-// origin data as an OriginTree. The caller can apply the tree to Go structs
-// after unmarshaling. When origin tracking is disabled, the returned tree is nil.
+// UnmarshalWithOriginTree is like Unmarshal but strips __origin__ from the
+// intermediate map before JSON conversion and returns the extracted origin
+// data as an OriginTree. The caller can apply the tree to Go structs after
+// unmarshaling. When origin tracking is disabled, the returned tree is nil.
 func UnmarshalWithOriginTree(y []byte, o interface{}, origin OriginOpt, opts ...JSONOpt) (*OriginTree, error) {
 	return UnmarshalWithDecodeOpts(y, o, DecodeOpts{Origin: origin}, opts...)
 }
