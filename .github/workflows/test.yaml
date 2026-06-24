@@ -4,22 +4,28 @@ jobs:
   lint-test-build:
     name: Lint, Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: ["1.14", "1.15", "1.16", "1.17", "1.18"]
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-        id: go
+          go-version: stable
 
       - name: Install Dependencies
         env:
           GOPROXY: https://proxy.golang.org,direct
         run: go mod download
+
+      # Catch a stale/incomplete committed go.sum. This runs on a pristine
+      # checkout, so if `go mod download` above had to add anything, the lockfile
+      # was incomplete (e.g. a dependency pinned to a release tag in go.mod but
+      # only a pseudo-version recorded in go.sum). `go mod verify` additionally
+      # confirms the cached modules match their recorded checksums.
+      - name: Verify modules
+        run: |
+          git diff --exit-code -- go.mod go.sum
+          go mod verify
 
       - name: Test
         run: go test -race ./...
