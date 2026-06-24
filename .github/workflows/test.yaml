@@ -21,5 +21,15 @@ jobs:
           GOPROXY: https://proxy.golang.org,direct
         run: go mod download
 
+      # Catch a stale/incomplete committed go.sum. This runs on a pristine
+      # checkout, so if `go mod download` above had to add anything, the lockfile
+      # was incomplete (e.g. a dependency pinned to a release tag in go.mod but
+      # only a pseudo-version recorded in go.sum). `go mod verify` additionally
+      # confirms the cached modules match their recorded checksums.
+      - name: Verify modules
+        run: |
+          git diff --exit-code -- go.mod go.sum
+          go mod verify
+
       - name: Test
         run: go test -race ./...
