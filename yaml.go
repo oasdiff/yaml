@@ -59,6 +59,13 @@ type DecodeOpts struct {
 	// real-world specs that use date-shaped strings as keys. Explicit
 	// "!!timestamp" tags in the source still resolve to time.Time.
 	DisableTimestamps bool
+	// AllowDuplicateKeys makes a repeated mapping key take its last value
+	// instead of being an error. That is what encoding/json does with a
+	// repeated JSON object name, so it is the setting to use when the same
+	// types are decoded from both YAML and JSON and a document should not
+	// load or fail purely on account of its format. Default false: repeated
+	// keys are an error, which is YAML's rule.
+	AllowDuplicateKeys bool
 }
 
 // OriginTree holds __origin__ data extracted from a YAML-decoded map tree.
@@ -87,6 +94,7 @@ type OriginTree struct {
 func Unmarshal(y []byte, o interface{}, decode DecodeOpts, opts ...JSONOpt) (*OriginTree, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
 	dec.Origin(decode.Origin.Enabled, decode.Origin.File)
+	dec.AllowDuplicateKeys(decode.AllowDuplicateKeys)
 	if decode.DisableTimestamps {
 		dec.DisableTimestamps(true)
 	}
