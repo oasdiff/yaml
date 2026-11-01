@@ -334,6 +334,9 @@ func convertToJSONableObject(yamlObj interface{}, jsonTarget *reflect.Value) (in
 				return nil, fmt.Errorf("unsupported map key of type: %s, key: %+#v, value: %+#v",
 					reflect.TypeOf(k), k, v)
 			}
+			if _, exists := strMap[keyString]; exists {
+				return nil, fmt.Errorf("multiple YAML keys map to JSON key %q", keyString)
+			}
 			strMap[keyString] = v
 		}
 		// replace yamlObj with our new string map
